@@ -32,7 +32,7 @@ fn process_instruction(
 ) -> ProgramResult {
     match instruction_data.split_first() {
         Some((Deposit::DISCRIMINATOR, data)) => Deposit::try_from((data, accounts))?.process(),
-        Some((Withdraw::DISCRIMINATOR, _)) => Withdraw::try_from(accounts)?.process(),
+        Some((Withdraw::DISCRIMINATOR, data)) => Withdraw::try_from((data, accounts))?.process(),
         _ => Err(ProgramError::InvalidInstructionData),
     }
 }
