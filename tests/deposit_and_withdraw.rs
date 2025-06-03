@@ -1,4 +1,4 @@
-use blueshift_vault::{Deposit, ID as PROGRAM_ID, SEED};
+use blueshift_vault::{Deposit, Withdraw, ID as PROGRAM_ID, SEED};
 use litesvm::LiteSVM;
 use solana_instruction::{AccountMeta, Instruction};
 use solana_keypair::Keypair;
@@ -9,7 +9,7 @@ use solana_transaction::Transaction;
 const LAMPORTS_PER_SOL: u64 = 1_000_000_000;
 
 #[test]
-fn deposit_to_vault() {
+fn deposit_then_withdraw() {
     let mut svm = LiteSVM::new();
 
     let payer = Keypair::new();
@@ -60,4 +60,29 @@ fn deposit_to_vault() {
 
     let deposit_balance = svm.get_balance(&vault_pubkey).unwrap_or_default();
     assert_eq!(LAMPORTS_PER_SOL, deposit_balance);
+
+    let data = vec![*Withdraw::DISCRIMINATOR, bump];
+    let ix = Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(payer.pubkey(), true),
+            AccountMeta::new(vault_pubkey, false),
+            AccountMeta::new(solana_system_interface::program::ID, false),
+        ],
+        data,
+    };
+
+    let tx = Transaction::new_signed_with_payer(
+        &[ix],
+        Some(&payer.pubkey()),
+        &[&payer],
+        recent_blockhash,
+    );
+
+    // Simulate tx
+    let sim_res = svm.simulate_transaction(tx.clone()).unwrap();
+    let meta = svm.send_transaction(tx).unwrap();
+    assert_eq!(sim_res.meta, meta);
+
+    assert_eq!(svm.get_balance(&vault_pubkey), Some(0));
 }
